@@ -27,9 +27,9 @@ async function run() {
       const cursor = productCollection.find({});
       const page = req.query.page;
       const size = parseInt(req.query.size);
-      const count = await cursor.count();
 
       let products;
+      const count = await cursor.count();
       if (page) {
         products = await cursor
           .skip(page * size)
@@ -39,6 +39,14 @@ async function run() {
         products = await cursor.toArray();
       }
       res.send({ count, products });
+    });
+
+    // use post to get data by keys
+    app.post("/products/byKeys", async (req, res) => {
+      const keys = req.body;
+      const query = { key: { $in: keys } };
+      const products = await productCollection.find(query).toArray();
+      res.json(products);
     });
   } finally {
     //   await client.close()
