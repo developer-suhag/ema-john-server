@@ -3,9 +3,19 @@ const app = express();
 const { MongoClient } = require("mongodb");
 require("dotenv").config();
 const cors = require("cors");
+var admin = require("firebase-admin");
 
 const port = process.env.PORT || 5000;
 
+// firebase admin initialize
+
+var serviceAccount = require("./ema-john-simple-79ced-firebase-adminsdk-fdoqp-01e29d6ddb.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+// middle ware
 app.use(cors());
 app.use(express.json());
 
@@ -15,6 +25,17 @@ const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+
+async function verifyToken(req, res, next) {
+  if (req.headers?.authorization?.startsWith("Bearer ")) {
+    const idToken = req.headers.authorization.split("Bearer ")[1];
+    try {
+      const decodedUser = await admin.auth().verifyIdToken(idToken);
+      req.decodedUserEmail = decodedUser.email;
+    } catch {}
+  }
+  next();
+}
 
 async function run() {
   try {
@@ -43,16 +64,16 @@ async function run() {
     });
 
     // GET orders api
-    app.get("/orders", async (req, res) => {
+    app.get("/orders", verifyToken, async (req, res) => {
       const email = req.query.email;
-      console.log(email);
-      let query = {};
-      if (email) {
-        query = { Email: email };
+      if (req.decodedUserEmail === email) {
+        const query = { Email: email };
+        const cursor = orderCollection.find(query);
+        const result = await cursor.toArray();
+        res.send(result);
+      } else {
+        res.status(401).json({ message: "User not authorized" });
       }
-      const cursor = orderCollection.find(query);
-      const result = await cursor.toArray();
-      res.send(result);
     });
 
     // use post to get data by keys
