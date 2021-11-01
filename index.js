@@ -42,6 +42,19 @@ async function run() {
       res.send({ count, products });
     });
 
+    // GET orders api
+    app.get("/orders", async (req, res) => {
+      const email = req.query.email;
+      console.log(email);
+      let query = {};
+      if (email) {
+        query = { Email: email };
+      }
+      const cursor = orderCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // use post to get data by keys
     app.post("/products/byKeys", async (req, res) => {
       const keys = req.body;
@@ -53,6 +66,7 @@ async function run() {
     // order post api
     app.post("/order", async (req, res) => {
       const order = req.body;
+      order.createdAt = new Date();
       const result = await orderCollection.insertOne(order);
       res.json(result);
     });
